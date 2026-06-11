@@ -1,0 +1,248 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+.sim { display: flex; gap: 20px; padding: 1rem 0; flex-wrap: wrap; }
+.left { display: flex; flex-direction: column; gap: 12px; min-width: 220px; }
+.screen-wrap { background: #1a1a2e; border-radius: 10px; padding: 14px; border: 3px solid #333; }
+.screen-label { font-size: 11px; color: #888; margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; }
+.oled { background: #000; border-radius: 4px; width: 256px; height: 128px; }
+.controls { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 14px; display: flex; gap: 10px; align-items: center; justify-content: center; }
+.btn-enc { width: 52px; height: 52px; border-radius: 50%; background: #2a2a2a; border: 2px solid #555; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #ccc; font-size: 10px; gap: 1px; user-select: none; }
+.btn-enc:active { background: #444; }
+.btn-back { padding: 8px 16px; border-radius: 20px; background: #c0392b; border: none; color: white; cursor: pointer; font-size: 13px; font-weight: 500; user-select: none; }
+.btn-back:active { opacity: 0.7; }
+.right { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 12px; }
+.pumps-panel { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 14px; }
+.pumps-title { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 10px; }
+.pump-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.pump-dot { width: 13px; height: 13px; border-radius: 50%; background: #444; border: 2px solid #666; transition: all 0.15s; flex-shrink: 0; }
+.pump-dot.open { background: #27ae60; border-color: #2ecc71; box-shadow: 0 0 5px #27ae60; }
+.pump-dot.done { background: #3498db; border-color: #5dade2; }
+.pump-name { font-size: 12px; color: var(--color-text-primary); width: 110px; }
+.pump-ml { font-size: 12px; color: var(--color-text-secondary); min-width: 72px; text-align: right; }
+.progress-bar-wrap { flex: 1; height: 6px; background: var(--color-border-tertiary); border-radius: 3px; overflow: hidden; }
+.progress-bar { height: 100%; background: #27ae60; width: 0%; transition: width 0.05s; border-radius: 3px; }
+.progress-bar.done { background: #3498db; }
+.log-panel { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 14px; }
+.log-title { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 8px; }
+.log-entries { font-family: 'Courier New', monospace; font-size: 12px; height: 90px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.log-entry { padding: 1px 0; }
+.log-entry.ok { color: #27ae60; }
+.log-entry.info { color: #3498db; }
+.buzzer-row { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); }
+.buzzer-dot { width: 10px; height: 10px; border-radius: 50%; background: #555; transition: all 0.1s; }
+.buzzer-dot.active { background: #f39c12; box-shadow: 0 0 6px #f39c12; }
+</style>
+
+<div class="sim">
+  <div class="left">
+    <div class="screen-wrap">
+      <div class="screen-label">OLED 128×64</div>
+      <div class="oled"><canvas id="oled" width="256" height="128"></canvas></div>
+    </div>
+    <div class="controls">
+      <div class="btn-enc" id="enc-up">▲<span style="font-size:9px">ENC+</span></div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">
+        <div class="btn-enc" id="enc-ok" style="width:46px;height:46px;">⏎<span style="font-size:9px">OK</span></div>
+        <button class="btn-back" id="btn-back">↩ Back</button>
+      </div>
+      <div class="btn-enc" id="enc-down">▼<span style="font-size:9px">ENC−</span></div>
+    </div>
+    <div class="buzzer-row">
+      <div class="buzzer-dot" id="buzzer-dot"></div>
+      <span style="font-size:12px;color:var(--color-text-secondary);">Buzzer</span>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="pumps-panel">
+      <div class="pumps-title">Pompes</div>
+      <div class="pump-row"><div class="pump-dot" id="v0"></div><span class="pump-name">P1 — Jus citron</span><div class="progress-bar-wrap"><div class="progress-bar" id="pb0"></div></div><span class="pump-ml" id="ml0">— mL</span></div>
+      <div class="pump-row"><div class="pump-dot" id="v1"></div><span class="pump-name">P2 — Eau gazeuse</span><div class="progress-bar-wrap"><div class="progress-bar" id="pb1"></div></div><span class="pump-ml" id="ml1">— mL</span></div>
+      <div class="pump-row"><div class="pump-dot" id="v2"></div><span class="pump-name">P3 — Pamplemousse</span><div class="progress-bar-wrap"><div class="progress-bar" id="pb2"></div></div><span class="pump-ml" id="ml2">— mL</span></div>
+      <div class="pump-row"><div class="pump-dot" id="v3"></div><span class="pump-name">P4 — Sirop</span><div class="progress-bar-wrap"><div class="progress-bar" id="pb3"></div></div><span class="pump-ml" id="ml3">— mL</span></div>
+    </div>
+    <div class="log-panel">
+      <div class="log-title">Journal</div>
+      <div class="log-entries" id="log"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('oled');
+const ctx = canvas.getContext('2d');
+const W = 256, H = 128;
+const ML_PER_MS = 0.06;
+
+const PUMP_LABELS = ["P1 = Jus citron", "P2 = Eau gazeuse", "P3 = Pamplemousse", "P4 = Sirop"];
+
+const RECIPES = [
+  { name: "Mojito",     valves: [{v:0,ml:22},{v:1,ml:200},{v:3,ml:15}] },
+  { name: "Grapefruit", valves: [{v:2,ml:200},{v:1,ml:50},{v:3,ml:15}] },
+  { name: "Spritz",     valves: [{v:1,ml:125},{v:3,ml:10}] }
+];
+
+let state = { screen: 'boot', cursor: 0, making: false, recipe: null, progress: [], rafId: null };
+
+function ts() { const t=new Date(); return `[${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}]`; }
+function addLog(msg, cls='info') {
+  const el=document.getElementById('log');
+  const e=document.createElement('div');
+  e.className='log-entry '+cls;
+  e.textContent=ts()+' '+msg;
+  el.appendChild(e); el.scrollTop=el.scrollHeight;
+}
+function buzz(ms=80) {
+  const d=document.getElementById('buzzer-dot');
+  d.classList.add('active'); setTimeout(()=>d.classList.remove('active'),ms);
+}
+function resetPumpUI() {
+  for(let i=0;i<4;i++){
+    document.getElementById('v'+i).className='pump-dot';
+    document.getElementById('pb'+i).style.width='0%';
+    document.getElementById('pb'+i).className='progress-bar';
+    document.getElementById('ml'+i).textContent='— mL';
+  }
+}
+
+function drawOLED() {
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff';
+
+  if (state.screen==='boot') {
+    ctx.font='bold 13px "Courier New"';
+    ctx.fillText('Remplir :',8,14);
+    ctx.fillStyle='#444'; ctx.fillRect(0,18,W,1);
+    PUMP_LABELS.forEach((l,i)=>{
+      ctx.fillStyle='#fff'; ctx.font='11px "Courier New"';
+      ctx.fillText(l, 8, 32+i*22);
+    });
+    ctx.fillStyle='#555'; ctx.font='9px "Courier New"';
+    ctx.fillText('OK pour continuer', 56, H-4);
+
+  } else if (state.screen==='menu') {
+    ctx.font='bold 13px "Courier New"'; ctx.fillText('COCKTAIL BAR',52,15);
+    ctx.fillStyle='#444'; ctx.fillRect(0,19,W,1);
+    RECIPES.forEach((r,i)=>{
+      const y=34+i*24;
+      if(i===state.cursor){
+        ctx.fillStyle='#fff'; ctx.fillRect(0,y-14,W,19);
+        ctx.fillStyle='#000'; ctx.font='bold 13px "Courier New"';
+        ctx.fillText('> '+r.name,8,y); ctx.fillStyle='#fff';
+      } else {
+        ctx.fillStyle='#888'; ctx.font='13px "Courier New"';
+        ctx.fillText('  '+r.name,8,y);
+      }
+    });
+    ctx.fillStyle='#444'; ctx.font='9px "Courier New"';
+    ctx.fillText('ENC=nav   OK=select',48,H-4);
+
+  } else if (state.screen==='confirm') {
+    const r=RECIPES[state.cursor];
+    ctx.font='bold 13px "Courier New"'; ctx.fillText(r.name,8,16);
+    ctx.fillStyle='#444'; ctx.fillRect(0,20,W,1);
+    ctx.fillStyle='#aaa'; ctx.font='11px "Courier New"';
+    r.valves.forEach((v,i)=>ctx.fillText(PUMP_LABELS[v.v].split('=')[1].trim()+'  '+v.ml+'mL',8,36+i*14));
+    ctx.fillStyle='#fff'; ctx.font='bold 11px "Courier New"';
+    ctx.fillText('OK=Lancer   Back=Menu',8,H-5);
+
+  } else if (state.screen==='making') {
+    const r=state.recipe;
+    ctx.font='bold 12px "Courier New"'; ctx.fillText('En cours : '+r.name,8,14);
+    ctx.fillStyle='#444'; ctx.fillRect(0,18,W,1);
+    const totalMl=r.valves.reduce((s,v)=>s+v.ml,0);
+    const doneMl=state.progress.reduce((s,p,i)=>s+Math.min(p.poured,r.valves[i].ml),0);
+    r.valves.forEach((v,i)=>{
+      const p=state.progress[i];
+      const vp=Math.min(p.poured/v.ml,1);
+      ctx.fillStyle=p.done?'#3498db':'#27ae60';
+      ctx.font='10px "Courier New"';
+      ctx.fillText('P'+(v.v+1),8,32+i*20);
+      ctx.fillStyle='#333'; ctx.fillRect(26,23+i*20,150,8);
+      ctx.fillStyle=p.done?'#3498db':'#27ae60';
+      ctx.fillRect(26,23+i*20,Math.round(150*vp),8);
+      ctx.fillStyle='#aaa'; ctx.font='10px "Courier New"';
+      ctx.fillText(Math.round(p.poured)+'/'+v.ml,180,32+i*20);
+    });
+    const pct=totalMl>0?doneMl/totalMl:0;
+    ctx.fillStyle='#555'; ctx.fillRect(8,H-14,W-16,8);
+    ctx.fillStyle='#fff'; ctx.fillRect(8,H-14,Math.round((W-16)*pct),8);
+
+  } else if (state.screen==='done') {
+    ctx.font='bold 22px "Courier New"'; ctx.fillStyle='#27ae60';
+    ctx.fillText('Pret !',76,46);
+    ctx.fillStyle='#aaa'; ctx.font='10px "Courier New"';
+    ctx.fillText('OK ou Back = menu',56,70);
+  }
+}
+
+function startMaking() {
+  const r=RECIPES[state.cursor];
+  state.recipe=r; state.making=true; state.screen='making';
+  state.progress=r.valves.map(()=>({poured:0,done:false,startTime:Date.now()}));
+  resetPumpUI();
+  r.valves.forEach(v=>{
+    document.getElementById('v'+v.v).className='pump-dot open';
+    document.getElementById('ml'+v.v).textContent='0 / '+v.ml+' mL';
+    addLog('P'+(v.v+1)+' ON — '+v.ml+'mL','info');
+  });
+  buzz(100);
+  function tick() {
+    let anyOpen=false;
+    r.valves.forEach((v,i)=>{
+      if(state.progress[i].done) return;
+      const elapsed=Date.now()-state.progress[i].startTime;
+      const poured=Math.min(elapsed*ML_PER_MS,v.ml);
+      state.progress[i].poured=poured;
+      document.getElementById('pb'+v.v).style.width=(poured/v.ml*100)+'%';
+      document.getElementById('ml'+v.v).textContent=Math.round(poured)+' / '+v.ml+' mL';
+      if(poured>=v.ml){
+        state.progress[i].done=true;
+        document.getElementById('v'+v.v).className='pump-dot done';
+        document.getElementById('pb'+v.v).className='progress-bar done';
+        document.getElementById('pb'+v.v).style.width='100%';
+        document.getElementById('ml'+v.v).textContent=v.ml+' mL ✓';
+        addLog('P'+(v.v+1)+' OFF — '+v.ml+'mL versé','ok');
+        buzz(60);
+      } else anyOpen=true;
+    });
+    drawOLED();
+    if(anyOpen) state.rafId=requestAnimationFrame(tick);
+    else {
+      state.making=false; state.screen='done'; drawOLED();
+      buzz(300); setTimeout(()=>buzz(200),400);
+      addLog('Cocktail prêt ! 🍹','ok');
+    }
+  }
+  drawOLED(); state.rafId=requestAnimationFrame(tick);
+}
+
+function goMenu() {
+  if(state.rafId) cancelAnimationFrame(state.rafId);
+  state.making=false; state.screen='menu'; resetPumpUI(); drawOLED();
+}
+
+document.getElementById('enc-up').addEventListener('click',()=>{
+  if(state.making) return;
+  if(state.screen==='menu'){state.cursor=(state.cursor-1+RECIPES.length)%RECIPES.length;buzz(40);drawOLED();}
+});
+document.getElementById('enc-down').addEventListener('click',()=>{
+  if(state.making) return;
+  if(state.screen==='menu'){state.cursor=(state.cursor+1)%RECIPES.length;buzz(40);drawOLED();}
+});
+document.getElementById('enc-ok').addEventListener('click',()=>{
+  if(state.screen==='boot'){state.screen='menu';buzz(60);drawOLED();addLog('Menu ouvert','info');}
+  else if(state.screen==='menu'){state.screen='confirm';buzz(60);drawOLED();}
+  else if(state.screen==='confirm') startMaking();
+  else if(state.screen==='done'){goMenu();addLog('Retour menu','info');}
+});
+document.getElementById('btn-back').addEventListener('click',()=>{
+  if(state.making) return;
+  if(state.screen==='boot'){state.screen='menu';drawOLED();}
+  else goMenu();
+  buzz(60); addLog('Retour menu','info');
+});
+
+addLog('Démarrage — vérifier les pompes','ok');
+drawOLED();
+</script>
